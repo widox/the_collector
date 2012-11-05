@@ -1,0 +1,2 @@
+exports.RDIO_CONSUMER_KEY = "483ne36fvrgqbnf44z88s7m4"
+exports.RDIO_CONSUMER_SECRET = "GRrZPSXSby"
