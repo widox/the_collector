@@ -10,36 +10,12 @@ app.set('view engine', 'jade');
 
 
 app.all('*', function(req, res, next) {
-    console.log('MATCHING *');
-    console.log(req.route);
-    console.log('TOKEN ' + req.session.token);
+    // console.log('MATCHING *');
+    // console.log(req.route);
+    // console.log('TOKEN ' + req.session.token);
 
     if (typeof req.session.token === "undefined" || !req.session.token) {
-        //do_auth(req, res, 'me', 'you');
-
-        console.log('SETUP RDIO');
-        var rdio = new Rdio([cred.RDIO_CONSUMER_KEY, cred.RDIO_CONSUMER_SECRET]);
-        var callbackUrl = /*req.baseUrl +*/ "http://localhost:3000/callback";
-
-        rdio.beginAuthentication(callbackUrl, function (err, authUrl) {
-            console.log('BEGIN AUTH');
-            if (err) {
-                console.log('ERROR');
-                return;
-            }
-
-            // Save the request token/secret in the session.
-            req.session.token = 'fu';
-            req.session.requestToken = rdio.token[0];
-            req.session.requestTokenSecret = rdio.token[1];
-
-            console.log(req.session);
-
-            // Go to Rdio to authenticate the app.
-            // redirect(authUrl, callback);
-            console.log(authUrl);
-            res.redirect(authUrl);
-        });
+        do_auth(req, res);
     } else {
         next();
     }
@@ -79,7 +55,7 @@ app.get('/', function (req, res) {
 
 app.get('/login', function (req, res, next) {
     console.log('IN LOGIN');
-    do_auth(req, res, 'me', 'you');
+    do_auth(req, res);
 });
 
 app.get('/logout', function (req, res) {
@@ -130,5 +106,27 @@ app.listen(3000);
 console.log('Listening on port 3000');
 
 
-function do_auth(req, res, user, pass) { }
+function do_auth(req, res) {
+    console.log('SETUP RDIO');
+    var rdio = new Rdio([cred.RDIO_CONSUMER_KEY, cred.RDIO_CONSUMER_SECRET]);
+    var callbackUrl = /*req.baseUrl +*/ "http://localhost:3000/callback";
+
+        rdio.beginAuthentication(callbackUrl, function (err, authUrl) {
+        console.log('BEGIN AUTH');
+        if (err) {
+            console.log('ERROR');
+            return;
+        }
+
+        // Save the request token/secret in the session.
+        req.session.token = 'dummy';
+        req.session.requestToken = rdio.token[0];
+        req.session.requestTokenSecret = rdio.token[1];
+
+        console.log(req.session);
+
+        // Go to Rdio to authenticate the app.
+        res.redirect(authUrl);
+    });
+}
 
