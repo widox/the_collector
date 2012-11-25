@@ -1,4 +1,5 @@
 extends layout
 
 block content
-    h1= greeting
+    h1 Hola #{curUser.username}!
+    img(src='#{curUser.icon}', alt='#{curUser.username} icon')

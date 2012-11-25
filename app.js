@@ -9,12 +9,10 @@ app.use(express.session({secret: 'the_collector', key: 'the_collector'}));
 app.set('view engine', 'jade');
 
 
+// catch-all route, will be called for every route
 app.all('*', function(req, res, next) {
-    // console.log('MATCHING *');
-    // console.log(req.route);
-    // console.log('TOKEN ' + req.session.token);
-
     if (typeof req.session.token === "undefined" || !req.session.token) {
+        // haven't auth'd to rdio yet, do it
         do_auth(req, res);
     } else {
         next();
@@ -22,33 +20,23 @@ app.all('*', function(req, res, next) {
 });
 
 app.get('/', function (req, res) {
-    var accessToken = req.session.token;
-    var accessTokenSecret = req.session.tokenSecret;
-    var greet = 'hola!';
+    var rdio = getRdio(req);
 
-    if (accessToken && accessTokenSecret) {
-        var rdio = new Rdio([cred.RDIO_CONSUMER_KEY, cred.RDIO_CONSUMER_SECRET],
-                            [accessToken, accessTokenSecret]);
-
-        rdio.call("currentUser", function (err, data) {
+    if (rdio) {
+        rdio.call('currentUser', {'extras': ['username']}, function (err, data) {
             if (err) {
                 return;
             }
 
             var currentUser = data.result;
+            req.session.curUser = currentUser;
+
             console.log(currentUser);
-            greet = 'hola ' +
-                currentUser.firstName +
-                ' ' +
-                currentUser.lastName +
-                '!'
-            ;
-            console.log(greet);
-            res.render('index', {greeting:greet});
+            res.render('index', {curUser:currentUser});
 
         });
     } else {
-        res.render('index', {greeting:greet});
+        res.render('error');
     }
 
 });
@@ -59,6 +47,10 @@ app.get('/login', function (req, res, next) {
 });
 
 app.get('/logout', function (req, res) {
+    delete req.session.curUser;
+    req.session.destroy(function(){
+        res.redirect('/');
+    });
 });
 
 app.get('/collection/:type', function (req, res) {
@@ -68,17 +60,12 @@ app.get('/collection/:type', function (req, res) {
 app.get('/callback', function (req, res) {
     console.log("IN CALLBACK");
 
-    var requestToken = req.session.requestToken;
-    var requestTokenSecret = req.session.requestTokenSecret;
     var verifier = req.query.oauth_verifier;
+    var rdio = getRdio(req);
 
     console.log('/CALLBACK verifier: ' + verifier);
 
-    if (requestToken && requestTokenSecret && verifier) {
-        // Exchange the verifier and token for an access token.
-        var rdio = new Rdio([cred.RDIO_CONSUMER_KEY, cred.RDIO_CONSUMER_SECRET],
-                            [requestToken, requestTokenSecret]);
-
+    if (rdio && verifier) {
         rdio.completeAuthentication(verifier, function (err) {
             if (err) {
                 console.log('/callback ERROR');
@@ -128,5 +115,32 @@ function do_auth(req, res) {
         // Go to Rdio to authenticate the app.
         res.redirect(authUrl);
     });
+}
+
+function getRdio(req) {
+    var accessToken = req.session.token;
+    var accessTokenSecret = req.session.tokenSecret;
+
+    // if we've already done the oauth dance
+    if (accessToken && accessTokenSecret) {
+        return new Rdio(
+            [cred.RDIO_CONSUMER_KEY, cred.RDIO_CONSUMER_SECRET],
+            [accessToken, accessTokenSecret]
+        );
+    }
+
+    // otherwise, finishing the auth from the callback
+    var requestToken = req.session.requestToken;
+    var requestTokenSecret = req.session.requestTokenSecret;
+
+    if (requestToken && requestTokenSecret) {
+        // Exchange the verifier and token for an access token.
+        return new Rdio(
+            [cred.RDIO_CONSUMER_KEY, cred.RDIO_CONSUMER_SECRET],
+            [requestToken, requestTokenSecret]
+        );
+    }
+
+    return false;
 }
 
