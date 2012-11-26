@@ -1,9 +1,15 @@
 extends ../layout
 
 block content
-    p.
-       looking at #{type}
+    p You have #{albums.length} albums in your collection
 
-    p.
-        SESSION: #{session.token}
+    ul
+        for album in albums
+            li
+                img(src='#{album.icon}') 
+                | Album: 
+                a(href='http://www.rdio.com#{album.url}') #{album.name} 
+                | Artist: 
+                a(href='http://www.rdio.com#{album.artistUrl}') #{album.artist} 
+                | Release Date: #{album.releaseDate}
 

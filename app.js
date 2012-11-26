@@ -53,8 +53,30 @@ app.get('/logout', function (req, res) {
     });
 });
 
-app.get('/collection/:type', function (req, res) {
-    res.render('collection/index', {type: req.params.type, session:req.session});
+app.get('/collection', function (req, res) {
+    var rdio = getRdio(req);
+
+    if (rdio) {
+        var params = {
+            'user': req.session.curUser.key,
+            'sort': 'artist'
+        };
+
+        rdio.call('getAlbumsInCollection', params, function (err, data) {
+            if (err) {
+                return;
+            }
+
+            var albums = data.result;
+
+            res.render(
+                'collection/index',
+                {session:req.session, albums:albums}
+            );
+        });
+    } else {
+        res.render('error');
+    }
 });
 
 app.get('/callback', function (req, res) {
