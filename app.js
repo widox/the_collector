@@ -1,4 +1,5 @@
 var express = require('express'),
+    fs = require('fs'),
     cred = require('./config'),
     Rdio = require('./lib/rdio'),
     app = express()
@@ -12,11 +13,28 @@ app.set('view engine', 'jade');
 // catch-all route, will be called for every route
 app.all('*', function(req, res, next) {
     if (typeof req.session.token === "undefined" || !req.session.token) {
-        // haven't auth'd to rdio yet, do it
-        do_auth(req, res);
+        fs.readFile('./rdio_token', 'utf8', function (err, data) {
+            //if (err) throw err;
+            data = data || '';
+
+            if (data.indexOf('^') !== -1) {
+                var tokens = data.split('^');
+                req.session.token = tokens[0];
+                req.session.tokenSecret = tokens[1];
+                console.log(req.session.token);
+            }
+
+            if (typeof req.session.token === "undefined" || !req.session.token) {
+                // haven't auth'd to rdio yet, do it
+                do_auth(req, res);
+            } else {
+                next();
+            }
+        });
     } else {
         next();
     }
+
 });
 
 app.get('/', function (req, res) {
@@ -100,6 +118,11 @@ app.get('/callback', function (req, res) {
             req.session.tokenSecret = rdio.token[1];
             delete req.session.requestToken;
             delete req.session.requestTokenSecret;
+
+            var contents = req.session.token + '^' + req.session.tokenSecret;
+            fs.writeFile('./rdio_token', contents, 'utf8', function(err) {
+                if (err) throw err;
+            });
 
             // Go to the home page.
             res.redirect('/');
